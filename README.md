@@ -1,5 +1,5 @@
 # FediTag
-FediTag uses JavaScript to embed a feed of posts from one Mastodon account using a particular hashtag on a website or page.
+FediTag uses JavaScript to embed a feed of Mastodon posts from one account using a particular hashtag on a website or page.
 
 As seen on [enikofox.com/blockgame/](https://enikofox.com/blockgame/).
 
