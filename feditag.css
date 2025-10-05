@@ -1,0 +1,87 @@
+.feditag-post {
+    padding: 1em 0;
+    border-top: 1px solid rgba(0, 0, 0, 0.5);
+}
+
+.feditag-poll {
+    padding-left: 2em;
+    padding-right: 2em;
+}
+
+.feditag-poll-bar {
+    background-color: rgb(107, 105, 214);
+    height: 8px;
+    border-radius: 4px;
+    position: relative;
+    top: -0.5em;
+}
+
+.feditag-emoji {
+    height: 1.25em;
+    vertical-align: text-bottom;
+}
+
+.feditag-date {
+    color: rgba(0, 0, 0, 0.6);
+}
+
+.feditag-post-link {
+    height: 1.1em;
+    vertical-align: text-bottom;
+    opacity: 0.8;
+}
+
+a.feditag-post-link:link {
+    text-decoration: none;
+}
+
+a.feditag-post-link:visited {
+    text-decoration: none;
+}
+
+a.feditag-post-link:hover {
+    text-decoration: none;
+}
+
+a.feditag-post-link:active {
+    text-decoration: none;
+}
+
+div.feditag-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: auto;
+  margin-bottom: 1em;
+}
+
+div.feditag-gallery-item {
+  margin: 5px;
+  border: 1px solid #ccc;
+  width: 45%;
+  min-width: 240px;
+}
+
+div.feditag-gallery-item:hover {
+  border: 1px solid #777;
+}
+
+div.feditag-gallery-item img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+div.feditag-gallery-video {
+  margin: 5px;
+  border: 0;
+  width: 45%;
+  min-width: 240px;
+}
+
+div.feditag-gallery-video video {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
