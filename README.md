@@ -11,6 +11,7 @@ As seen on [enikofox.com/blockgame/](https://enikofox.com/blockgame/).
 - Supports polls
 - Supports custom emojis
 - Lightbox galleries for images (see below)
+- Automatic removal of trailing hashtags
 
 # How to use
 
