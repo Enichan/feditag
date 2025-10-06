@@ -1,13 +1,12 @@
 class FediTag extends HTMLElement {
-    constructor() {
-        super();
-
-        this.galleryIndex = 0;
-        this.postsLoaded = 0;
-        this.limit = 40; // 40 is the max according to mastodon's api
-
-        this.feedLoaded = false;
-    }
+    galleryIndex = 0;
+    postsLoaded = 0;
+    /**
+     * 40 is the max according to mastodon's api.
+     * @see {@link https://docs.joinmastodon.org/methods/accounts/#query-parameters-1}
+     */
+    limit = 40; //
+    feedLoaded = false;
 
     connectedCallback() {
         this.host = this.getAttribute("host");
