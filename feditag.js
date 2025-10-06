@@ -12,18 +12,23 @@ class FediTag extends HTMLElement {
         this.host = this.getAttribute("host");
         this.accountID = this.getAttribute("account");
         this.fediTagName = this.getAttribute("tag");
-        setTimeout(() => {
-            this.innerHTML = `
-                <div id="feditag-container">
-                    <div id="feditag-posts">
-                        <p><em>Loading posts...</em></p>
-                    </div>
-                </div>
-            `;
+        this.fediTagContainer = Object.assign(document.createElement("div"), {
+            id: "feditag-container",
+        });
+        this.fediTagPosts = Object.assign(document.createElement("div"), {
+            id: "feditag-posts",
+            innerHTML: "<p><em>Loading posts...</em></p>"
+        });
+        this.fediTagContainer.appendChild(this.fediTagPosts);
 
-            const posts = document.getElementById("feditag-container");
-            this.respondToVisibility(posts, this.loadPosts.bind(this));
-        }, 0);
+        setTimeout(
+            () =>
+                this.respondToVisibility(
+                    this.fediTagContainer,
+                    this.loadPosts.bind(this),
+                ),
+            0,
+        );
     }
 
     removeTrailingHashtags(contents) {
@@ -218,7 +223,7 @@ class FediTag extends HTMLElement {
         div.classList.add('feditag-post');
         div.appendChild(contents);
 
-        document.getElementById("feditag-posts").appendChild(div);
+        this.fediTagPosts.appendChild(div);
 
         // instantiate lightbox
         if (galleryName && typeof SimpleLightbox !== 'undefined') {
@@ -244,7 +249,7 @@ class FediTag extends HTMLElement {
             div.classList.add('feditag-post');
             div.innerHTML = "<p>Fetching more posts...</p>";
 
-            document.getElementById("feditag-posts").appendChild(div);
+            this.fediTagPosts.appendChild(div);
 
             setTimeout(() => {
                 let postLoaderActivated = false;
@@ -255,7 +260,7 @@ class FediTag extends HTMLElement {
                     }
                     postLoaderActivated = true;
 
-                    document.getElementById("feditag-posts").removeChild(div);
+                    this.fediTagPosts.removeChild(div);
 
                     this.renderPosts();
                 });
@@ -272,12 +277,12 @@ class FediTag extends HTMLElement {
         .then((response) => response.json())
         .then((data) => {
             if (Array.isArray(data) && data.length > 0) {
-                document.getElementById("feditag-posts").innerHTML = "";
+                this.fediTagPosts.innerHTML = "";
                 this.posts = data;
                 this.renderPosts(data);
             }
             else {
-                document.getElementById("feditag-posts").innerHTML = "<p><em>No posts found.</em></p>";
+                this.fediTagPosts.innerHTML = "<p><em>No posts found.</em></p>";
             }
 
             this.feedLoaded = true;
