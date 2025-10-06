@@ -48,13 +48,15 @@
  */
 
 class FediTag extends HTMLElement {
+    /** Posts are loaded in chunks, this defines the size of those chunks. */
+    chunkSize = 5;
     galleryIndex = 0;
     postsLoaded = 0;
     /**
      * 40 is the max according to mastodon's api.
      * @see {@link https://docs.joinmastodon.org/methods/accounts/#query-parameters-1}
      */
-    limit = 40; //
+    limit = 40;
     feedLoaded = false;
     /** @type {Post[]} */
     posts = [];
@@ -84,44 +86,32 @@ class FediTag extends HTMLElement {
 
     /** @param {HTMLDivElement} contents */
     removeTrailingHashtags(contents) {
-        let para = contents.lastChild;
-        let isOnlyHashtags = true;
+        const para = contents.lastChild;
+        const isOnlyHashtags = [...para.childNodes].every((node) =>
+            node.nodeType === Node.ELEMENT_NODE
+                ? node.nodeName === "A" && node.rel === "tag"
+                : (node.textContent ?? "").trim().length === 0,
+        );
 
-        for (const node of para.childNodes) {
-            if (node.nodeType === Node.ELEMENT_NODE) {
-                if (node.nodeName !== "A" || node.rel !== "tag") {
-                    isOnlyHashtags = false;
-                    break;
-                }
-            }
-            else {
-                if (node.textContent === null || node.textContent.trim().length === 0) {
-                    continue;
-                }
-                isOnlyHashtags = false;
-                break;
-            }
+        if (isOnlyHashtags) {
+            contents.removeChild(para);
         }
-
-        if (!isOnlyHashtags) {
-            return;
-        }
-
-        contents.removeChild(para);
     }
 
     /** @param {Post} post */
     renderPost(post) {
         // format contents and process emojis
-        let contents = document.createElement("div");
-        let contentText = post.content;
-
-        if (Array.isArray(post.emojis)) {
-            for (let i = 0; i < post.emojis.length; i++) {
-                contentText = contentText.replace(`:${post.emojis[i].shortcode}:`,
-                    `<img src="${post.emojis[i].url}" class="feditag-emoji">`);
-            }
-        }
+        const contents = document.createElement("div");
+        const contentText = Array.isArray(post.emojis)
+            ? post.emojis.reduce(
+                  (contentText, emoji) =>
+                      contentText.replace(
+                          `:${emoji.shortcode}:`,
+                          `<img src="${emoji.url}" class="feditag-emoji">`,
+                      ),
+                  post.content,
+              )
+            : post.content;
 
         contents.innerHTML = contentText;
 
@@ -154,23 +144,22 @@ class FediTag extends HTMLElement {
         // handle polls
         let poll = post.poll;
         if (poll) {
-            for (let i = 0; i < poll.options.length; i++) {
-                const opt = poll.options[i];
-                let percent = opt.votes_count / poll.votes_count;
-                let percentText = `${Math.floor(percent * 100 + 0.5)}%`;
-
-                let optEle = document.createElement("div");
-                optEle.classList.add("feditag-poll");
-                optEle.innerHTML = `
-                    <p>
-                        <span class="feditag-poll-percent">${percentText}</span>
-                        <span class="feditag-poll-text">${opt.title}</span>
-                    </p>
-                    <div class="feditag-poll-bar" style="width: ${percentText}"></div>
-                `;
+            poll.options.forEach((opt) => {
+                const percent = opt.votes_count / poll.votes_count;
+                const percentText = `${Math.floor(percent * 100 + 0.5)}%`;
+                const optEle = Object.assign(document.createElement("div"), {
+                    className: "feditag-poll",
+                    innerHTML: `
+                        <p>
+                            <span class="feditag-poll-percent">${percentText}</span>
+                            <span class="feditag-poll-text">${opt.title}</span>
+                        </p>
+                        <div class="feditag-poll-bar" style="width: ${percentText}"></div>
+                    `
+                });
 
                 contents.appendChild(optEle);
-            }
+            });
 
             const voteLink = poll.expired
                 ? "Poll closed"
@@ -193,93 +182,93 @@ class FediTag extends HTMLElement {
             this.galleryIndex++;
 
             // images, gifs, and videos (image gallery items)
-            for (let i = 0; i < attachments.length; i++) {
-                let media = attachments[i];
-
-                if (media.type === "image" || media.type === "gifv" || media.type === "video") {
-                    let mediaUrl = media.url;
-                    let previewUrl = media.preview_url;
-                    let previewSize = media.meta.small;
-                    let altText = media.description;
-
-                    let mediaHtml = null;
-                    if (media.type === "image") {
-                        mediaHtml = `
+            attachments.forEach(
+                ({
+                    description,
+                    meta: { small: { height, width } },
+                    preview_url,
+                    type,
+                    url,
+                }) => {
+                    if (
+                        type === "image" ||
+                        type === "gifv" ||
+                        type === "video"
+                    ) {
+                        let mediaHtml = "";
+                        if (type === "image") {
+                            mediaHtml = `
                             <div class="feditag-gallery-item">
-                                <a href="${mediaUrl}" title="${altText}">
-                                    <img src="${previewUrl}" alt="${altText}" width="${previewSize.width}" height="${previewSize.height}">
+                                <a href="${url}" title="${description}">
+                                    <img src="${preview_url}" alt="${description}" width="${width}" height="${height}">
                                 </a>
                             </div>
                         `;
-                    }
-                    else if (media.type === "gifv") {
-                        mediaHtml = `
+                        } else if (type === "gifv") {
+                            mediaHtml = `
                             <div class="feditag-gallery-video">
-                                <video width="${previewSize.width}" height="${previewSize.height}" controls loop autoplay>
-                                    <source src="${mediaUrl}">
+                                <video width="${width}" height="${height}" controls loop autoplay>
+                                    <source src="${url}">
                                     Your browser does not support the video element.
                                 </video>
                             </div>
                         `;
-                    }
-                    else {
-                        mediaHtml = `
+                        } else {
+                            mediaHtml = `
                             <div class="feditag-gallery-video">
-                                <video width="${previewSize.width}" height="${previewSize.height}" controls>
-                                    <source src="${mediaUrl}">
+                                <video width="${width}" height="${height}" controls>
+                                    <source src="${url}">
                                     Your browser does not support the video element.
                                 </video>
                             </div>
                         `;
+                        }
+
+                        const trimmedMediaHtml = mediaHtml.trim();
+
+                        if (trimmedMediaHtml !== "") {
+                            const div = Object.assign(
+                                document.createElement("div"),
+                                { innerHTML: trimmedMediaHtml },
+                            );
+
+                            gallery.appendChild(div.firstChild);
+                        }
                     }
-
-                    if (mediaHtml === null || mediaHtml === "") {
-                        continue;
-                    }
-
-                    const div = Object.assign(document.createElement("div"), {
-                        innerHTML: mediaHtml.trim()
-                    });
-
-                    gallery.appendChild(div.firstChild);
-                }
-            }
+                },
+            );
 
             contents.appendChild(gallery);
 
             // audio and unknown (non-image gallery items)
-            for (let i = 0; i < attachments.length; i++) {
-                let media = attachments[i];
-
-                if (media.type === "image" || media.type === "gifv" || media.type === "video") {
-                    continue;
-                }
-
-                let mediaHtml = null;
-                if (media.type === "audio") {
-                    mediaHtml = `
+            attachments.forEach(({ type, url }) => {
+                if (type !== "image" && type !== "gifv" && type !== "video") {
+                    let mediaHtml = "";
+                    if (type === "audio") {
+                        mediaHtml = `
                         <p><audio controls>
-                            <source src="${media.url}">
+                            <source src="${url}">
                             Your browser does not support the audio element.
                         </audio></p>
                     `;
-                }
-                else {
-                    mediaHtml = `
-                        <p>Click to open media attachment: <a href="${media.url}">${media.url}</a></p>
+                    } else {
+                        mediaHtml = `
+                        <p>Click to open media attachment: <a href="${url}">${url}</a></p>
                     `;
+                    }
+
+                    const trimmedMediaHtml = mediaHtml.trim();
+
+                    if (trimmedMediaHtml !== "") {
+                        const div = Object.assign(
+                            document.createElement("div"),
+                            { innerHTML: trimmedMediaHtml },
+                        );
+
+                        gallery.appendChild(div.firstChild);
+                    }
                 }
-
-                if (mediaHtml === null || mediaHtml === "") {
-                    continue;
-                }
-
-                const div = Object.assign(document.createElement("div"), {
-                    innerHTML: mediaHtml.trim()
-                });
-
-                gallery.appendChild(div.firstChild);
-            }
+            });
         }
 
         // create container and add contents
@@ -296,19 +285,14 @@ class FediTag extends HTMLElement {
     }
 
     renderPosts() {
-        let isDone = false;
+        const chunk = this.posts.slice(
+            this.postsLoaded,
+            (this.postsLoaded += this.chunkSize),
+        );
 
-        for (let i = 0; i < 5; i++) {
-            this.renderPost(this.posts[this.postsLoaded]);
+        chunk.forEach(post => this.renderPost(post));
 
-            this.postsLoaded++;
-            if (this.postsLoaded >= this.posts.length) {
-                isDone = true;
-                break;
-            }
-        }
-
-        if (!isDone) {
+        if (chunk.length > 0) {
             let div = document.createElement("div");
             div.classList.add('feditag-post');
             div.innerHTML = "<p>Fetching more posts...</p>";
