@@ -1,3 +1,52 @@
+/**
+ * @typedef Emoji
+ * @property {string} shortcode
+ * @property {string} url
+ */
+
+/**
+ * @typedef PollOption
+ * @property {string} title
+ * @property {number} votes_count
+ */
+
+/**
+ * @typedef Poll
+ * @property {boolean} expired
+ * @property {PollOption[]} options
+ * @property {number} votes_count
+ */
+
+/**
+ * @typedef MediaAttachmentMetaSmall
+ * @property {number} height
+ * @property {number} width
+ */
+
+/**
+ * @typedef MediaAttachmentMeta
+ * @property {MediaAttachmentMetaSmall} small
+ */
+
+/**
+ * @typedef MediaAttachment
+ * @property {string} description
+ * @property {MediaAttachmentMeta} meta
+ * @property {string} preview_url
+ * @property {string} type
+ * @property {string} url
+ */
+
+/**
+ * @typedef Post
+ * @property {string} content
+ * @property {string} created_at
+ * @property {Emoji[]} emojis
+ * @property {MediaAttachment[]} media_attachments
+ * @property {Poll} poll
+ * @property {string} url
+ */
+
 class FediTag extends HTMLElement {
     galleryIndex = 0;
     postsLoaded = 0;
@@ -7,6 +56,8 @@ class FediTag extends HTMLElement {
      */
     limit = 40; //
     feedLoaded = false;
+    /** @type {Post[]} */
+    posts = [];
 
     connectedCallback() {
         this.host = this.getAttribute("host");
@@ -31,13 +82,14 @@ class FediTag extends HTMLElement {
         );
     }
 
+    /** @param {HTMLDivElement} contents */
     removeTrailingHashtags(contents) {
         let para = contents.lastChild;
         let isOnlyHashtags = true;
 
         for (const node of para.childNodes) {
             if (node.nodeType === Node.ELEMENT_NODE) {
-                if (node.nodeName != "A" || node.rel != "tag") {
+                if (node.nodeName !== "A" || node.rel !== "tag") {
                     isOnlyHashtags = false;
                     break;
                 }
@@ -58,14 +110,15 @@ class FediTag extends HTMLElement {
         contents.removeChild(para);
     }
 
+    /** @param {Post} post */
     renderPost(post) {
         // format contents and process emojis
         let contents = document.createElement("div");
         let contentText = post.content;
 
-        if (Array.isArray(post["emojis"])) {
+        if (Array.isArray(post.emojis)) {
             for (let i = 0; i < post.emojis.length; i++) {
-                contentText = contentText.replace(":" + post.emojis[i].shortcode + ":",
+                contentText = contentText.replace(`:${post.emojis[i].shortcode}:`,
                     `<img src="${post.emojis[i].url}" class="feditag-emoji">`);
             }
         }
@@ -76,25 +129,35 @@ class FediTag extends HTMLElement {
         this.removeTrailingHashtags(contents);
 
         // format date
-        let date = new Date(post["created_at"]);
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-        let dateStr = date.toLocaleDateString('en-US', options);
+        const dateStr = new Date(post.created_at).toLocaleDateString("en-US", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        });
 
-        let dateEle = document.createElement("p");
-        dateEle.innerHTML = `
-            <span class="feditag-date"><a href="${post.url}" target="_blank" class="feditag-post-link"><img src="external-link.svg" class="feditag-post-link"></a>
-            <em>${dateStr}</em></span>
-        `;
+        const dateEle = Object.assign(document.createElement("p"), {
+            innerHTML: `
+                <span class="feditag-date">
+                    <a href="${post.url}" target="_blank" class="feditag-post-link">
+                        <img src="external-link.svg" class="feditag-post-link">
+                    </a>
+                    <em>${dateStr}</em>
+                </span>
+            `
+        });
 
         contents.insertBefore(dateEle, contents.firstChild);
 
         // handle polls
-        let poll = post["poll"];
+        let poll = post.poll;
         if (poll) {
             for (let i = 0; i < poll.options.length; i++) {
                 const opt = poll.options[i];
                 let percent = opt.votes_count / poll.votes_count;
-                let percentText = Math.floor(percent * 100 + 0.5) + "%";
+                let percentText = `${Math.floor(percent * 100 + 0.5)}%`;
 
                 let optEle = document.createElement("div");
                 optEle.classList.add("feditag-poll");
@@ -109,24 +172,23 @@ class FediTag extends HTMLElement {
                 contents.appendChild(optEle);
             }
 
-            let vote = document.createElement("p");
-            if (poll.expired) {
-                vote.innerHTML = `<em>${poll.votes_count} votes | Poll closed</em>`;
-            }
-            else {
-                vote.innerHTML = `<em>${poll.votes_count} votes | <a href="${post.url}">Vote on Mastodon</a></em>`;
-            }
+            const voteLink = poll.expired
+                ? "Poll closed"
+                : `<a href="${post.url}">Vote on Mastodon</a>`;
+            const vote = Object.assign(document.createElement("p"), {
+                innerHTML: `<em>${poll.votes_count} votes | ${voteLink}</em>`,
+            });
             contents.appendChild(vote);
         }
 
         // handle media attachments
-        let attachments = post["media_attachments"];
+        let attachments = post.media_attachments;
         let galleryName = null;
 
         if (Array.isArray(attachments) && attachments.length > 0) {
             let gallery = document.createElement("div");
             gallery.classList.add('feditag-gallery');
-            gallery.classList.add(galleryName = 'feditag-gallery-n' + this.galleryIndex);
+            gallery.classList.add(galleryName = `feditag-gallery-n${this.galleryIndex}`);
             gallery.id = galleryName;
             this.galleryIndex++;
 
@@ -134,14 +196,14 @@ class FediTag extends HTMLElement {
             for (let i = 0; i < attachments.length; i++) {
                 let media = attachments[i];
 
-                if (media.type == "image" || media.type == "gifv" || media.type == "video") {
-                    let mediaUrl = media["url"];
-                    let previewUrl = media["preview_url"];
-                    let previewSize = media["meta"]["small"];
-                    let altText = media["description"];
+                if (media.type === "image" || media.type === "gifv" || media.type === "video") {
+                    let mediaUrl = media.url;
+                    let previewUrl = media.preview_url;
+                    let previewSize = media.meta.small;
+                    let altText = media.description;
 
                     let mediaHtml = null;
-                    if (media.type == "image") {
+                    if (media.type === "image") {
                         mediaHtml = `
                             <div class="feditag-gallery-item">
                                 <a href="${mediaUrl}" title="${altText}">
@@ -150,7 +212,7 @@ class FediTag extends HTMLElement {
                             </div>
                         `;
                     }
-                    else if (media.type == "gifv") {
+                    else if (media.type === "gifv") {
                         mediaHtml = `
                             <div class="feditag-gallery-video">
                                 <video width="${previewSize.width}" height="${previewSize.height}" controls loop autoplay>
@@ -175,8 +237,9 @@ class FediTag extends HTMLElement {
                         continue;
                     }
 
-                    let div = document.createElement("div");
-                    div.innerHTML = mediaHtml.trim();
+                    const div = Object.assign(document.createElement("div"), {
+                        innerHTML: mediaHtml.trim()
+                    });
 
                     gallery.appendChild(div.firstChild);
                 }
@@ -188,12 +251,12 @@ class FediTag extends HTMLElement {
             for (let i = 0; i < attachments.length; i++) {
                 let media = attachments[i];
 
-                if (media.type == "image" || media.type == "gifv" || media.type == "video") {
+                if (media.type === "image" || media.type === "gifv" || media.type === "video") {
                     continue;
                 }
 
                 let mediaHtml = null;
-                if (media.type == "audio") {
+                if (media.type === "audio") {
                     mediaHtml = `
                         <p><audio controls>
                             <source src="${media.url}">
@@ -211,8 +274,9 @@ class FediTag extends HTMLElement {
                     continue;
                 }
 
-                let div = document.createElement("div");
-                div.innerHTML = mediaHtml.trim();
+                const div = Object.assign(document.createElement("div"), {
+                    innerHTML: mediaHtml.trim()
+                });
 
                 gallery.appendChild(div.firstChild);
             }
@@ -227,7 +291,7 @@ class FediTag extends HTMLElement {
 
         // instantiate lightbox
         if (galleryName && typeof SimpleLightbox !== 'undefined') {
-            new SimpleLightbox({elements: '.' + galleryName + ' a'});
+            new SimpleLightbox({ elements: `.${galleryName} a` });
         }
     }
 
@@ -272,7 +336,12 @@ class FediTag extends HTMLElement {
         if (this.feedLoaded) return;
 
         fetch(
-            "https://" + this.host + "/api/v1/accounts/" + this.accountID + "/statuses?tagged=" + this.fediTagName + "&limit=" + this.limit
+            `https://${this.host}/api/v1/accounts/${this.accountID}/statuses?${new URLSearchParams(
+                {
+                    limit: `${this.limit}`,
+                    tagged: `${this.fediTagName}`,
+                },
+            )}`
         )
         .then((response) => response.json())
         .then((data) => {
@@ -289,12 +358,16 @@ class FediTag extends HTMLElement {
         });
     }
 
+    /**
+     * @param {HTMLElement} element
+     * @param {() => void} callback
+     */
     respondToVisibility(element, callback) {
         var options = {
             root: null,
         };
 
-        var observer = new IntersectionObserver((entries, observer) => {
+        var observer = new IntersectionObserver((entries) => {
             entries.forEach((entry) => {
                 if (entry.intersectionRatio > 0) {
                     callback();
