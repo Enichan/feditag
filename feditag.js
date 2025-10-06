@@ -13,10 +13,8 @@ class FediTag extends HTMLElement {
         this.host = this.getAttribute("host");
         this.accountID = this.getAttribute("account");
         this.fediTagName = this.getAttribute("tag");
-
-        let _this = this;
         setTimeout(() => {
-            _this.innerHTML = `
+            this.innerHTML = `
                 <div id="feditag-container">
                     <div id="feditag-posts">
                         <p><em>Loading posts...</em></p>
@@ -25,7 +23,7 @@ class FediTag extends HTMLElement {
             `;
 
             const posts = document.getElementById("feditag-container");
-            _this.respondToVisibility(posts, _this.loadPosts.bind(_this));
+            this.respondToVisibility(posts, this.loadPosts.bind(this));
         }, 0);
     }
 
@@ -63,7 +61,7 @@ class FediTag extends HTMLElement {
 
         if (Array.isArray(post["emojis"])) {
             for (let i = 0; i < post.emojis.length; i++) {
-                contentText = contentText.replace(":" + post.emojis[i].shortcode + ":", 
+                contentText = contentText.replace(":" + post.emojis[i].shortcode + ":",
                     `<img src="${post.emojis[i].url}" class="feditag-emoji">`);
             }
         }
@@ -168,11 +166,11 @@ class FediTag extends HTMLElement {
                             </div>
                         `;
                     }
-                    
+
                     if (mediaHtml === null || mediaHtml === "") {
                         continue;
                     }
-                    
+
                     let div = document.createElement("div");
                     div.innerHTML = mediaHtml.trim();
 
@@ -249,12 +247,10 @@ class FediTag extends HTMLElement {
 
             document.getElementById("feditag-posts").appendChild(div);
 
-            let _this = this;
-
             setTimeout(() => {
                 let postLoaderActivated = false;
 
-                _this.respondToVisibility(div, () => {
+                this.respondToVisibility(div, () => {
                     if (postLoaderActivated) {
                         return;
                     }
@@ -262,7 +258,7 @@ class FediTag extends HTMLElement {
 
                     document.getElementById("feditag-posts").removeChild(div);
 
-                    _this.renderPosts();
+                    this.renderPosts();
                 });
             }, 500);
         }
@@ -271,8 +267,6 @@ class FediTag extends HTMLElement {
     loadPosts() {
         if (this.feedLoaded) return;
 
-        let _this = this;
-
         fetch(
             "https://" + this.host + "/api/v1/accounts/" + this.accountID + "/statuses?tagged=" + this.fediTagName + "&limit=" + this.limit
         )
@@ -280,14 +274,14 @@ class FediTag extends HTMLElement {
         .then((data) => {
             if (Array.isArray(data) && data.length > 0) {
                 document.getElementById("feditag-posts").innerHTML = "";
-                _this.posts = data;
-                _this.renderPosts(data);
+                this.posts = data;
+                this.renderPosts(data);
             }
             else {
                 document.getElementById("feditag-posts").innerHTML = "<p><em>No posts found.</em></p>";
             }
 
-            _this.feedLoaded = true;
+            this.feedLoaded = true;
         });
     }
 
