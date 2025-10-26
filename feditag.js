@@ -29,6 +29,15 @@ class FediTag extends HTMLElement {
         }, 0);
     }
 
+    escapeHtml(unsafe) {
+        return (unsafe || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
     removeTrailingHashtags(contents) {
         let para = contents.lastChild;
         let isOnlyHashtags = true;
@@ -91,7 +100,7 @@ class FediTag extends HTMLElement {
         if (poll) {
             for (let i = 0; i < poll.options.length; i++) {
                 const opt = poll.options[i];
-                let percent = opt.votes_count / poll.votes_count;
+                let percent = poll.votes_count == 0 ? 0 : opt.votes_count / poll.votes_count;
                 let percentText = Math.floor(percent * 100 + 0.5) + "%";
 
                 let optEle = document.createElement("div");
@@ -112,7 +121,7 @@ class FediTag extends HTMLElement {
                 vote.innerHTML = `<em>${poll.votes_count} votes | Poll closed</em>`;
             }
             else {
-                vote.innerHTML = `<em>${poll.votes_count} votes | <a href="${post.url}">Vote on Mastodon</a></em>`;
+                vote.innerHTML = `<em>${poll.votes_count} votes | <a href="${post.url}" target="_blank">Vote on Mastodon</a></em>`;
             }
             contents.appendChild(vote);
         }
@@ -136,7 +145,7 @@ class FediTag extends HTMLElement {
                     let mediaUrl = media["url"];
                     let previewUrl = media["preview_url"];
                     let previewSize = media["meta"]["small"];
-                    let altText = media["description"];
+                    let altText = this.escapeHtml(media["description"]);
 
                     let mediaHtml = null;
                     if (media.type == "image") {
