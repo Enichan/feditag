@@ -160,7 +160,7 @@ class FediTag extends HTMLElement {
                     else if (media.type == "gifv") {
                         mediaHtml = `
                             <div class="feditag-gallery-video">
-                                <video width="${previewSize.width}" height="${previewSize.height}" controls loop autoplay>
+                                <video width="${previewSize.width}" height="${previewSize.height}" controls loop autoplay aria-label="${altText}" title="${altText}">
                                     <source src="${mediaUrl}">
                                     Your browser does not support the video element.
                                 </video>
@@ -170,7 +170,7 @@ class FediTag extends HTMLElement {
                     else {
                         mediaHtml = `
                             <div class="feditag-gallery-video">
-                                <video width="${previewSize.width}" height="${previewSize.height}" controls>
+                                <video width="${previewSize.width}" height="${previewSize.height}" controls aria-label="${altText}" title="${altText}">
                                     <source src="${mediaUrl}">
                                     Your browser does not support the video element.
                                 </video>
